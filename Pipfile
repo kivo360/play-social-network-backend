@@ -1,0 +1,20 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+sanic = "*"
+yaggal = {editable = true, path = "."}
+dask = {extras = ["dataframe"], version = "*"}
+validate-email = "*"
+passlib = "*"
+sanic-jwt = "*"
+sanic-session = "*"
+pyjwt = "*"
+
+[dev-packages]
+pylint = "*"
+
+[requires]
+python_version = "3.6"
