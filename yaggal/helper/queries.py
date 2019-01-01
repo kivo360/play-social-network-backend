@@ -5,4 +5,3 @@ def get_last(params):
     if len(last_list) == 0:
         return {}
     return last_list[0]
-        

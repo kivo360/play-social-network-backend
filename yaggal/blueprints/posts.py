@@ -20,16 +20,16 @@ async def view(request):
 
     if r is None:
         return json(general_response("Json not sent in. Please enter it.", {}), status=400)
-
-    post_id = r.get("post-id", None)
+    print(r)
+    post_id = r.get("postid", None)
 
     if post_id is None:
-        return json(general_response("No post-id available", {}), status=400)
-
+        return json(general_response("No post-id available", {}, title="No Post Id"), status=400)
+    
     last = get_last({"type": "post", "pid": post_id})
 
     if last == {}:
-        return json(general_response("Post doesn't exist", {}), status=400)
+        return json(general_response("The post you're looking for doesn't exist", {}, title="Post Doesn't Exist"), status=400)
     
 
     # Dont forget to get the vote information(if it exist), and the comments
@@ -56,31 +56,34 @@ async def publish(request, user):
     main = r.get("main", None)
     tags = r.get("tags", None)
     txt = r.get("txt", None)
+    img = r.get("img", None)
 
     if title is None:
-        return json(general_response("Post title not given. Please enter it.", {}), status=400)
+        return json(general_response("Post title not given. Please enter it.", {}, title="Missing Title"), status=400)
     
     if main is None:
-        return json(general_response("Main tag not given. Please enter.", {}), status=400)
+        return json(general_response("Main tag not given. Please enter.", {}, title="Missing Main Tag"), status=400)
     
     if tags is None:
-        return json(general_response("Post tags not entered.", {}), status=400)
+        return json(general_response("Post tags not entered.", {}, title="Missing Tags"), status=400)
 
     if txt is None:
-        return json(general_response("Post text not given. Please enter.", {}), status=400)
+        return json(general_response("Post text not given. Please enter.", {}, title="Incorrect Tab Number"), status=400)
 
+    if img is None:
+        return json(general_response("Image not found. Please send in an image.", {}, title="Image not found"), status=400)
 
     if not isinstance(main, str):
-        return json(general_response("Make sure the main tag is a string. It can't be a list or anything else.", {}), status=400)
+        return json(general_response("Make sure the main tag is a string. It can't be a list or anything else.", {}, title="Incorrect Tab Number"), status=400)
 
     if not isinstance(txt, str):
-        return json(general_response("Make sure the main tag is a string. It can't be a list or anything else.", {}), status=400)
+        return json(general_response("Make sure the main tag is a string. It can't be a list or anything else.", {}, title="Incorrect Tab Number"), status=400)
     
     if not isinstance(tags, list):
-        return json(general_response("Make sure tags is a list.", {}), status=400)
+        return json(general_response("Make sure tags is a list.", {}, title="Incorrect Tab Type"), status=400)
     
     if len(tags) < 3 or len(tags) > 10:
-        return json(general_response("Incorrect number of tags. Between 3 and 10 tags.", {}), status=400)
+        return json(general_response("Incorrect number of tags. Between 3 and 10 tags.", {}, title="Incorrect Tab Number"), status=400)
     
     
     # If this is all good, save the post inside of the database
@@ -93,15 +96,16 @@ async def publish(request, user):
         "mtag": main,
         "tags": tags,
         "txt": txt,
+        "image": img,
         "timestamp": float(time.time())
     }
     
     try:
         store.store(save_obj)
     except Exception:
-        return json(general_response("We had a problem on our end. Sorry :(", {}), status=500)
+        return json(general_response("We had a problem on our end. Sorry :(", {}, title="My Bad"), status=500)
     
-    return json(general_response("Post Successfully Published", {"post_id": post_id}))
+    return json(general_response("Post Successfully Published", {"post_id": post_id}, title="Publish Successful"))
 
 @posts.route("/edit", methods=["POST"])
 @authorized()
@@ -169,7 +173,7 @@ async def vote(request, user):
     try:
         store.store(vote_obj)
     except Exception:
-        return json(general_response("We had a problem on our end. Sorry :(", {}), status=500)
+        return json(general_response("We had a problem on our end. Sorry :(", {}, title="Our Bad"), status=500)
     
     # Get the post id
     # Make sure the post exist

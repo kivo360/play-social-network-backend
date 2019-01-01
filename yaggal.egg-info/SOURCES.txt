@@ -10,4 +10,7 @@ yaggal.egg-info/requires.txt
 yaggal.egg-info/top_level.txt
 yaggal/blueprints/__init__.py
 yaggal/blueprints/auth.py
+yaggal/blueprints/lists.py
+yaggal/blueprints/posts.py
 yaggal/blueprints/profile.py
+yaggal/blueprints/wallet.py

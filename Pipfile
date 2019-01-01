@@ -12,6 +12,10 @@ passlib = "*"
 sanic-jwt = "*"
 sanic-session = "*"
 pyjwt = "*"
+sanic-cors = "*"
+aiofiles = "*"
+"boto3" = "*"
+loguru = "*"
 
 [dev-packages]
 pylint = "*"

@@ -7,11 +7,12 @@ from sanic import Blueprint, Sanic
 from sanic.response import file, json
 from validate_email import validate_email
 from passlib.hash import pbkdf2_sha256
-from yaggal.helper.sessions import create_user_key
+from yaggal.helper.sessions import create_user_key, refresh_token
 
 from yaggal import store
 from yaggal.helper.validation import validate_password, validate_pin
 from yaggal.helper.formatting import general_response
+from yaggal.wrappers.auth import authorized, inject, check
 
 auth = Blueprint('auth', url_prefix='/auth')
 
@@ -27,7 +28,8 @@ async def login(request):
     email = None
     if username is None or password is None:
         return json({
-            "msg": "please enter your username or password"
+            "msg": "please enter your username or password",
+            "title": "Missing Information"
         }, status=400)
 
     is_valid_email = validate_email(username)
@@ -59,13 +61,23 @@ async def login(request):
     # print(current_doc, file=sys.stderr)
     # Determine if its valid
     if doc_found == False or is_valid==False:
-        return json({"msg": "The username or password you entered was not correct"})
+        return json({
+            "msg": "The username or password you entered was not correct",
+            "title": "Missing Information"
+        }, status=400)
     
     else:
         _id = current_doc['sid']
         _jwt = create_user_key(_id)
+
+        front_dict = {
+            "sid": current_doc['sid'],
+            "username": current_doc['username'],
+            "email": current_doc['email']
+        }
+
         # Set a session id here
-        return json({"msg": "Successful", "token": _jwt})
+        return json({"msg": "Successful", "token": _jwt, "user": front_dict})
     
     
     # Would check for username or password here
@@ -76,7 +88,7 @@ async def login(request):
 async def register(request):
     r = request.json
     if r is None:
-        return json({"msg": "Please enter a json request"}, status=400)
+        return json({"msg": "Please enter a json request", "title": "No Json"}, status=400)
 
     username  = r.get("username", None)
     email = r.get("email", None)
@@ -93,27 +105,32 @@ async def register(request):
 
     if no_username:
         return json({
-            "msg": "No Username. Please enter a username"
+            "msg": "No Username. Please enter a username",
+            "title": "No Username"
         }, status=400)
     
     if no_password:
         return json({
-            "msg": "No password. Please enter one"
+            "msg": "No password. Please enter one",
+            "title": "No password"
         }, status=400)
     
     if no_confirm:
         return json({
-            "msg": "No confirmation password. Please enter one"
+            "msg": "No confirmation password. Please enter one",
+            "title": "No confirmation"
         }, status=400)
 
     if no_pin:
         return json({
-            "msg": "No pin. Please enter one"
+            "msg": "No pin. Please enter one",
+            "title": "No pin"
         }, status=400)
     
     if no_email:
         return json({
-            "msg": "No email. Please enter one"
+            "msg": "No email. Please enter one",
+            "title": "No email"
         }, status=400)
 
     db_email = list(store.query({"email": email, "type": "user"}))
@@ -124,18 +141,18 @@ async def register(request):
     # print(db_username, file=sys.stderr)
 
     if len(db_email) > 0:
-        return json({"msg": "That email is already taken"})
+        return json({"msg": "That email is already taken", "title": "Email Taken"}, status=400)
 
     if len(db_username) > 0:
-        return json({"msg": "That username is already taken"})
+        return json({"msg": "That username is already taken", "title": "Username Taken"}, status=400)
 
     if confirm != password:
-        return json({"msg": "The confirmation and password are not the same"})
+        return json({"msg": "The confirmation and password are not the same", "title": "Invalid Confirmation"}, status=400)
 
     is_valid_email = validate_email(email)
 
     if not is_valid_email:
-        return json({"msg": "The email you entered is not valid"})
+        return json({"msg": "The email you entered is not valid", "title": "Invalid Email"}, status=400)
 
     
     
@@ -150,9 +167,12 @@ async def register(request):
     savable = pbkdf2_sha256.hash(password)
 
 
+    # 
+
+    _sid = str(uuid.uuid4())
     save_dict = {
         "type": "user",
-        "sid": str(uuid.uuid4()), # Will store this inside of the JWT to ensure the user can post and
+        "sid": _sid, # Will store this inside of the JWT to ensure the user can post and
         "timestamp": time.time(),
         "username": username,
         "password": savable,
@@ -164,11 +184,17 @@ async def register(request):
     except Exception:
         return json({"msg": "There was a problem on our end. Sorry!!!"}, status=500)
     
-    
-    return json({"msg": "Congrats. All information available"})
+    _jwt = create_user_key(_sid)
+    front_dict = {
+        "sid": _sid,
+        "username": username,
+        "email": email
+    }
+    return json({"msg": "Success", "token": _jwt, "user": front_dict})
 
 
 @auth.route("/refresh", methods=["POST"])
-async def refresh(request):
-    
-    return json({"msg": "Refresh Successful"})
+@check()
+async def refresh(request, encoded):
+    new_token = refresh_token(encoded)
+    return json({"msg": "Refresh Successful", "token": new_token})
